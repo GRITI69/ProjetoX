@@ -1,5 +1,7 @@
 package com.projetox.agente;
 
+
+//java -jar target/agente-1.0-SNAPSHOT-jar-with-dependencies.jar
 import com.google.gson.Gson;
 import oshi.SystemInfo;
 import oshi.hardware.CentralProcessor;
