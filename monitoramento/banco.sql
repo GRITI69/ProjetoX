@@ -18,3 +18,14 @@ CREATE TABLE monitoramento (
     maquina_id BIGINT,
     FOREIGN KEY (maquina_id) REFERENCES maquina(id)
 );
+
+
+# SET FOREIGN_KEY_CHECKS = 0;
+# -- Limpa todas as tabelas
+# TRUNCATE TABLE Alerta;
+# TRUNCATE TABLE Servico;
+# TRUNCATE TABLE Monitoramento;
+# TRUNCATE TABLE Maquina;
+#
+# -- Ativa novamente
+# SET FOREIGN_KEY_CHECKS = 1;
