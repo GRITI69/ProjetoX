@@ -20,12 +20,12 @@ CREATE TABLE monitoramento (
 );
 
 
-# SET FOREIGN_KEY_CHECKS = 0;
-# -- Limpa todas as tabelas
-# TRUNCATE TABLE Alerta;
-# TRUNCATE TABLE Servico;
-# TRUNCATE TABLE Monitoramento;
-# TRUNCATE TABLE Maquina;
-#
-# -- Ativa novamente
-# SET FOREIGN_KEY_CHECKS = 1;
+SET FOREIGN_KEY_CHECKS = 0;
+-- Limpa todas as tabelas
+TRUNCATE TABLE Alerta;
+TRUNCATE TABLE Servico;
+TRUNCATE TABLE Monitoramento;
+TRUNCATE TABLE Maquina;
+
+-- Ativa novamente
+SET FOREIGN_KEY_CHECKS = 1;

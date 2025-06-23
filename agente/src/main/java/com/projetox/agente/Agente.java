@@ -1,8 +1,9 @@
 package com.projetox.agente;
-
+//java -jar target/agente-1.0-SNAPSHOT-jar-with-dependencies.jar
 import com.google.gson.Gson;
 import oshi.SystemInfo;
 import oshi.hardware.*;
+
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
@@ -35,7 +36,7 @@ public class Agente {
         long[] ticksAntigos = cpu.getSystemCpuLoadTicks();
         Gson gson = new Gson();
 
-        // Disco - controle do tempo de atividade
+        // Controle de Disco
         Map<String, Long> discoTransferAnterior = new HashMap<>();
         long tempoAnterior = System.currentTimeMillis();
         for (HWDiskStore disco : discos) {
@@ -43,17 +44,15 @@ public class Agente {
             discoTransferAnterior.put(disco.getName(), disco.getTransferTime());
         }
 
-        // Controle de temperatura simulada
+        // Controle da Temperatura simulada
         double temperaturaSimulada = sensores.getCpuTemperature();
         if (temperaturaSimulada <= 0) {
             temperaturaSimulada = 40 + Math.random() * 5;
         }
 
-        boolean subindo = true;
-
         while (true) {
             try {
-                Thread.sleep(4000);
+                Thread.sleep(2000); // Intervalo de coleta
 
                 // CPU
                 long[] ticksNovos = cpu.getSystemCpuLoadTicks();
@@ -63,40 +62,45 @@ public class Agente {
                 // RAM
                 double usoRam = (1.0 - (double) memoria.getAvailable() / memoria.getTotal()) * 100;
 
-                // DISCO - Tempo de atividade real
+                // DISCO (Tempo de atividade em %)
                 long tempoAtual = System.currentTimeMillis();
                 long intervalo = tempoAtual - tempoAnterior;
                 tempoAnterior = tempoAtual;
 
                 double usoDisco = 0;
-                for (HWDiskStore disco : discos) {
+                for (HWDiskStore disco : hal.getDiskStores()) {
                     disco.updateAttributes();
-                    long tempoTransferencia = disco.getTransferTime();
-                    long tempoAnteriorDisco = discoTransferAnterior.getOrDefault(disco.getName(), 0L);
-                    long deltaTransfer = tempoTransferencia - tempoAnteriorDisco;
-                    discoTransferAnterior.put(disco.getName(), tempoTransferencia);
+                    long tempoTransferAtual = disco.getTransferTime();
+                    long tempoTransferAntigo = discoTransferAnterior.getOrDefault(disco.getName(), 0L);
 
-                    double usoPercentualDisco = (intervalo > 0) ? (deltaTransfer * 100.0 / intervalo) : 0;
-                    usoDisco += usoPercentualDisco;
+                    long tempoAtivo = tempoTransferAtual - tempoTransferAntigo;
+                    discoTransferAnterior.put(disco.getName(), tempoTransferAtual);
+
+                    double uso = (tempoAtivo / (double) intervalo) * 100;
+                    if (uso > usoDisco) {
+                        usoDisco = uso;
+                    }
                 }
-
                 if (usoDisco > 100) usoDisco = 100;
 
-                // Temperatura
-                double temperaturaReal = sensores.getCpuTemperature();
-                if (temperaturaReal <= 0) {
-                    if (subindo) {
-                        temperaturaSimulada += Math.random() * 2;
-                        if (temperaturaSimulada >= 70) {
-                            subindo = false;
-                        }
-                    } else {
-                        temperaturaSimulada -= Math.random() * 2;
-                        if (temperaturaSimulada <= 42) {
-                            subindo = true;
-                        }
+                // TEMPERATURA
+                double temperatura = sensores.getCpuTemperature();
+                if (temperatura <= 0) {
+                    // Oscilação normal
+                    temperaturaSimulada += (Math.random() * 2 - 1); // Varia -1 a +1
+                    if (temperaturaSimulada < 40) temperaturaSimulada = 40;
+                    if (temperaturaSimulada > 50) temperaturaSimulada = 50;
+
+                    // Pico ocasional
+                    if (Math.random() > 0.92) {
+                        temperaturaSimulada = 70;
                     }
-                    temperaturaReal = temperaturaSimulada;
+                    // Resfriamento após pico
+                    if (temperaturaSimulada >= 70) {
+                        temperaturaSimulada = 45 + Math.random() * 5;
+                    }
+
+                    temperatura = temperaturaSimulada;
                 }
 
                 // Dados JSON
@@ -104,7 +108,7 @@ public class Agente {
                 dados.put("cpu", Math.round(usoCpu * 100.0) / 100.0);
                 dados.put("ram", Math.round(usoRam * 100.0) / 100.0);
                 dados.put("disco", Math.round(usoDisco * 100.0) / 100.0);
-                dados.put("temperatura", Math.round(temperaturaReal * 100.0) / 100.0);
+                dados.put("temperatura", Math.round(temperatura * 100.0) / 100.0);
                 dados.put("maquina", nomeMaquina);
 
                 enviarDados(dados, gson);
@@ -130,7 +134,7 @@ public class Agente {
 
             int responseCode = conn.getResponseCode();
             if (responseCode == 200 || responseCode == 201) {
-                System.out.println("PROJETO X RODANDO " + LocalDateTime.now());
+                System.out.println("Dados enviados com sucesso - " + LocalDateTime.now());
             } else {
                 System.err.println("Erro ao enviar dados: código " + responseCode);
             }
